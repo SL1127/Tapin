@@ -1,0 +1,806 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tap Water Cleanliness</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Plus Jakarta Sans & Playfair Display (fallback for Miller Banner) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;0,700;1,400&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        :root {
+            --bg-dark: #16161c;
+            --particle-color: #3946a4;
+        }
+
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: #16161c;
+            color: #f8fafc;
+            min-height: 100vh;
+            overflow-x: hidden;
+            margin: 0;
+        }
+
+        /* Editorial Serif Font Stack matching Miller Banner */
+        .font-miller {
+            font-family: 'Miller Banner', 'Miller Display', 'Playfair Display', Georgia, serif;
+        }
+
+        /* Gradient Title (#c3e9ff -> #57c2ff) */
+        .title-gradient {
+            background: linear-gradient(135deg, #c3e9ff 0%, #57c2ff 100%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            color: transparent;
+        }
+
+        /* Persistent Blurred Drifting Ambient Particles (#3946a4) */
+        .ambient-canvas {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: 0;
+            overflow: hidden;
+        }
+
+        .ambient-orb {
+            position: absolute;
+            border-radius: 9999px;
+            background: radial-gradient(circle, rgba(57, 70, 164, 0.72) 0%, rgba(57, 70, 164, 0.22) 55%, rgba(57, 70, 164, 0) 75%);
+            filter: blur(72px);
+            will-change: transform, opacity;
+        }
+
+        @keyframes floatSlow1 {
+            0%, 100% {
+                transform: translate3d(-6vw, -4vh, 0) scale(0.92);
+                opacity: 0.35;
+            }
+            50% {
+                transform: translate3d(8vw, 7vh, 0) scale(1.18);
+                opacity: 0.78;
+            }
+        }
+
+        @keyframes floatSlow2 {
+            0%, 100% {
+                transform: translate3d(7vw, 6vh, 0) scale(1.12);
+                opacity: 0.65;
+            }
+            50% {
+                transform: translate3d(-9vw, -5vh, 0) scale(0.88);
+                opacity: 0.28;
+            }
+        }
+
+        @keyframes floatSlow3 {
+            0%, 100% {
+                transform: translate3d(-4vw, 8vh, 0) scale(0.95);
+                opacity: 0.32;
+            }
+            50% {
+                transform: translate3d(6vw, -7vh, 0) scale(1.15);
+                opacity: 0.72;
+            }
+        }
+
+        .orb-1 {
+            width: 44vw;
+            height: 44vw;
+            min-width: 300px;
+            min-height: 300px;
+            top: 8%;
+            left: 10%;
+            animation: floatSlow1 16s ease-in-out infinite;
+        }
+
+        .orb-2 {
+            width: 48vw;
+            height: 48vw;
+            min-width: 320px;
+            min-height: 320px;
+            bottom: 6%;
+            right: 8%;
+            animation: floatSlow2 19s ease-in-out infinite;
+        }
+
+        .orb-3 {
+            width: 38vw;
+            height: 38vw;
+            min-width: 260px;
+            min-height: 260px;
+            top: 38%;
+            left: 36%;
+            animation: floatSlow3 22s ease-in-out infinite;
+        }
+
+        /* Breathing Opacity Animation for Prompts */
+        @keyframes textBreath {
+            0%, 100% {
+                opacity: 0.24;
+            }
+            50% {
+                opacity: 0.96;
+            }
+        }
+
+        .breathing-prompt {
+            color: #93c5fd;
+            animation: textBreath 4.2s ease-in-out infinite;
+        }
+
+        /* Opening Splash Screen */
+        #openingScreen {
+            position: fixed;
+            inset: 0;
+            background-color: #16161c;
+            z-index: 60;
+            transition: opacity 0.9s cubic-bezier(0.4, 0, 0.2, 1), visibility 0.9s;
+            cursor: pointer;
+        }
+
+        #openingScreen.fade-out {
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+        }
+
+        /* Main Screen Fade-In */
+        #mainApp {
+            opacity: 0;
+            transition: opacity 1s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            z-index: 10;
+        }
+
+        #mainApp.visible {
+            opacity: 1;
+        }
+
+        /* Horizontal Carousel Track */
+        .carousel-track {
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            overflow-x: auto;
+            scroll-snap-type: x mandatory;
+            scroll-behavior: smooth;
+            gap: 2.25rem;
+            padding: 2.25rem calc(50% - 76px);
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+            cursor: grab;
+        }
+
+        .carousel-track:active {
+            cursor: grabbing;
+        }
+
+        .carousel-track::-webkit-scrollbar {
+            display: none;
+        }
+
+        /* Individual Bottle Card in Carousel Mode */
+        .bottle-card {
+            scroll-snap-align: center;
+            flex: 0 0 152px;
+            transition: transform 0.38s cubic-bezier(0.22, 1, 0.36, 1),
+                        opacity 0.38s ease,
+                        filter 0.38s ease;
+        }
+
+        .carousel-track .bottle-card.dimmed {
+            opacity: 0.32;
+            filter: brightness(0.55) saturate(0.75);
+            transform: scale(0.88);
+        }
+
+        .carousel-track .bottle-card.focused {
+            opacity: 1;
+            filter: brightness(1.06) saturate(1.05);
+            transform: scale(1.08);
+        }
+
+        /* Zoomed-Out Multi-Row Grid Mode */
+        .grid-track {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(128px, 1fr));
+            gap: 2rem 1.25rem;
+            padding: 1.5rem 1rem;
+            justify-items: center;
+        }
+
+        .grid-track .bottle-card {
+            flex: unset;
+            width: 100%;
+            max-width: 140px;
+            opacity: 1 !important;
+            filter: brightness(1) !important;
+            transform: scale(1) !important;
+        }
+
+        /* Transparent Plastic Water Bottle Architecture */
+        .glass-bottle-container {
+            position: relative;
+            width: 84px;
+            height: 186px;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            user-select: none;
+        }
+
+        .bottle-cap {
+            width: 28px;
+            height: 13px;
+            background: linear-gradient(90deg, rgba(147, 197, 253, 0.55) 0%, rgba(56, 189, 248, 0.75) 50%, rgba(147, 197, 253, 0.5) 100%);
+            border-radius: 4px 4px 2px 2px;
+            border: 1px solid rgba(255, 255, 255, 0.65);
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
+            z-index: 20;
+        }
+
+        .bottle-neck {
+            width: 22px;
+            height: 15px;
+            background: linear-gradient(90deg, rgba(255, 255, 255, 0.25) 0%, rgba(255, 255, 255, 0.06) 50%, rgba(255, 255, 255, 0.22) 100%);
+            border-left: 1.5px solid rgba(255, 255, 255, 0.38);
+            border-right: 1.5px solid rgba(255, 255, 255, 0.38);
+            z-index: 10;
+        }
+
+        .bottle-body {
+            position: relative;
+            width: 100%;
+            height: 154px;
+            border-radius: 26px 26px 14px 14px;
+            border: 1.5px solid rgba(255, 255, 255, 0.42);
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.16) 0%, rgba(255, 255, 255, 0.03) 50%, rgba(255, 255, 255, 0.12) 100%);
+            box-shadow: 0 12px 28px rgba(0, 0, 0, 0.55), inset 0 0 14px rgba(255, 255, 255, 0.18);
+            backdrop-filter: blur(4px);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+        }
+
+        .glass-reflection-left {
+            position: absolute;
+            top: 10px;
+            left: 7px;
+            width: 6px;
+            bottom: 12px;
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0.65) 0%, rgba(255, 255, 255, 0.04) 100%);
+            border-radius: 8px;
+            pointer-events: none;
+            z-index: 25;
+        }
+
+        .glass-reflection-right {
+            position: absolute;
+            top: 14px;
+            right: 7px;
+            width: 3.5px;
+            bottom: 16px;
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0.35) 0%, rgba(255, 255, 255, 0.02) 100%);
+            border-radius: 6px;
+            pointer-events: none;
+            z-index: 25;
+        }
+
+        .liquid-fill {
+            width: 100%;
+            transition: all 0.55s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+        }
+
+        /* Water Pour Stream Animation */
+        @keyframes pourAnimation {
+            0% { opacity: 1; height: 0%; }
+            50% { opacity: 1; height: 100%; }
+            100% { opacity: 0; height: 0%; }
+        }
+
+        .pour-stream {
+            position: absolute;
+            top: -22px;
+            width: 4px;
+            background: linear-gradient(180deg, rgba(224, 242, 254, 0.95) 0%, rgba(87, 194, 255, 0.85) 100%);
+            border-radius: 2px;
+            z-index: 30;
+            pointer-events: none;
+        }
+
+        .pour-active {
+            animation: pourAnimation 0.48s ease-in-out;
+        }
+
+        /* Subtle Table Horizon Line */
+        .table-horizon {
+            height: 2px;
+            background: linear-gradient(90deg, rgba(87, 194, 255, 0) 0%, rgba(195, 233, 255, 0.28) 50%, rgba(87, 194, 255, 0) 100%);
+        }
+    </style>
+</head>
+<body class="selection:bg-sky-500/30">
+
+    <!-- Persistent Blurred Drifting Ambient Particles (#3946a4) across both screens -->
+    <div class="ambient-canvas" aria-hidden="true">
+        <div class="ambient-orb orb-1"></div>
+        <div class="ambient-orb orb-2"></div>
+        <div class="ambient-orb orb-3"></div>
+    </div>
+
+    <!-- ==========================================
+         PAGE 1: OPENING SPLASH SCREEN
+    =========================================== -->
+    <section id="openingScreen" role="button" tabindex="0" aria-label="Enter Tap Water Cleanliness Visualizer">
+        <!-- Ambient particles layered visibly inside splash too -->
+        <div class="ambient-canvas" aria-hidden="true">
+            <div class="ambient-orb orb-1"></div>
+            <div class="ambient-orb orb-2"></div>
+            <div class="ambient-orb orb-3"></div>
+        </div>
+
+        <!-- Centered Title at 50% vertical height (3/6) -->
+        <div class="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[88vw] sm:w-[60vw] md:w-[50vw] text-center z-10 px-4">
+            <h1 class="font-miller title-gradient text-3xl sm:text-5xl md:text-6xl font-semibold tracking-tight leading-tight">
+                Is tap water actually dirty?
+            </h1>
+        </div>
+
+        <!-- Breathing Prompt at 80% vertical height (4/5) -->
+        <div class="fixed left-1/2 top-[80%] -translate-x-1/2 -translate-y-1/2 w-[84vw] sm:w-[50vw] text-center z-10 px-4">
+            <p class="breathing-prompt text-sm sm:text-base md:text-lg font-medium tracking-wide">
+                Tap to question your trust.
+            </p>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         PAGE 2: MAIN VISUALIZER SCREEN
+    =========================================== -->
+    <div id="mainApp" class="min-h-screen flex flex-col justify-between">
+
+        <!-- Centered Minimalist Header with Icon-Only Reset -->
+        <header class="w-full pt-8 pb-4 px-4 relative z-20">
+            <div class="max-w-5xl mx-auto relative flex flex-col items-center justify-center text-center">
+                <!-- Gradient Title in Miller Banner -->
+                <h1 class="font-miller title-gradient text-3xl sm:text-4xl md:text-5xl font-semibold tracking-tight px-12">
+                    Tap Water Cleanliness
+                </h1>
+                <!-- Requested Subtitle -->
+                <p class="mt-2.5 text-xs sm:text-sm md:text-base text-sky-200/80 font-normal tracking-wide max-w-xl px-8">
+                    Is it actually dirty, or do you just not trust it?
+                </p>
+
+                <!-- Icon-Only Reset Button -->
+                <button id="resetAllBtn" title="Reset All Bottles" aria-label="Reset All Bottles" class="absolute right-0 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/5 hover:bg-white/10 border border-white/15 text-sky-200/80 hover:text-white flex items-center justify-center transition-all active:scale-90 backdrop-blur-md">
+                    <i class="fa-solid fa-rotate-left text-sm"></i>
+                </button>
+            </div>
+        </header>
+
+        <!-- Center Stage: Horizontal Carousel or Zoomed-Out Grid -->
+        <main class="flex-1 flex flex-col justify-center w-full max-w-7xl mx-auto px-2 sm:px-6 relative z-20">
+            
+            <!-- Pure Swipe / Drag / Scroll Carousel Wrapper (No Arrows) -->
+            <div class="relative w-full">
+                <!-- Bottles Container -->
+                <div id="bottlesContainer" class="carousel-track">
+                    <!-- Injected via JavaScript -->
+                </div>
+            </div>
+
+            <!-- Subtle Horizon Line -->
+            <div class="table-horizon w-full max-w-4xl mx-auto mt-1"></div>
+
+            <!-- Zoom Out / Carousel View Toggle Button -->
+            <div class="mt-6 flex flex-col items-center justify-center gap-3">
+                <button id="zoomToggleBtn" class="group inline-flex items-center gap-2.5 px-5 py-2.5 rounded-full bg-white/[0.06] hover:bg-sky-400/15 border border-sky-300/25 hover:border-sky-300/50 text-sky-200 text-xs sm:text-sm font-medium tracking-wide transition-all active:scale-95 backdrop-blur-md shadow-lg">
+                    <!-- Zoom Out SVG Icon -->
+                    <svg id="zoomOutIcon" class="w-4 h-4 text-sky-300 transition-transform group-hover:scale-95" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="11" cy="11" r="8"></circle>
+                        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                        <line x1="8" y1="11" x2="14" y2="11"></line>
+                    </svg>
+                    <!-- Zoom In SVG Icon (Hidden by default) -->
+                    <svg id="zoomInIcon" class="hidden w-4 h-4 text-sky-300 transition-transform group-hover:scale-105" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="11" cy="11" r="8"></circle>
+                        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                        <line x1="11" y1="8" x2="11" y2="14"></line>
+                        <line x1="8" y1="11" x2="14" y2="11"></line>
+                    </svg>
+                    <span id="zoomToggleLabel">Zoom Out</span>
+                </button>
+            </div>
+        </main>
+
+        <!-- Bottom Breathing Prompt & Selection Feedback -->
+        <footer class="w-full py-7 px-4 text-center relative z-20">
+            <div class="max-w-2xl mx-auto space-y-3">
+                <!-- Dynamic Selection Status -->
+                <div id="confirmationBanner" class="hidden transition-all duration-300">
+                    <span id="confirmationText" class="inline-block text-xs sm:text-sm text-sky-300/90 bg-sky-500/10 border border-sky-400/25 px-4 py-1.5 rounded-full">
+                        Selected
+                    </span>
+                </div>
+
+                <!-- Breathing Light-Blue Prompt -->
+                <p class="breathing-prompt text-sm sm:text-base md:text-lg font-medium tracking-wide leading-relaxed">
+                    Tap the country you're from if you think its tap water is clean and safe to drink.
+                </p>
+            </div>
+        </footer>
+    </div>
+
+    <script>
+        // European Countries Dataset
+        const europeanCountries = [
+            { name: "United Kingdom", inkColor: "#1e40af" },
+            { name: "France", inkColor: "#dc2626" },
+            { name: "Germany", inkColor: "#d97706" },
+            { name: "Italy", inkColor: "#15803d" },
+            { name: "Spain", inkColor: "#ea580c" },
+            { name: "Netherlands", inkColor: "#7c3aed" },
+            { name: "Switzerland", inkColor: "#b91c1c" },
+            { name: "Austria", inkColor: "#991b1b" },
+            { name: "Sweden", inkColor: "#0284c7" },
+            { name: "Norway", inkColor: "#0891b2" },
+            { name: "Denmark", inkColor: "#be123c" },
+            { name: "Finland", inkColor: "#4338ca" },
+            { name: "Ireland", inkColor: "#166534" },
+            { name: "Poland", inkColor: "#e11d48" },
+            { name: "Czech Republic", inkColor: "#0f766e" },
+            { name: "Portugal", inkColor: "#15803d" },
+            { name: "Greece", inkColor: "#1d4ed8" },
+            { name: "Belgium", inkColor: "#b45309" },
+            { name: "Hungary", inkColor: "#047857" },
+            { name: "Romania", inkColor: "#3730a3" },
+            { name: "Slovakia", inkColor: "#0369a1" },
+            { name: "Croatia", inkColor: "#c2410c" },
+            { name: "Bulgaria", inkColor: "#047857" },
+            { name: "Slovenia", inkColor: "#0e7490" },
+            { name: "Estonia", inkColor: "#2563eb" },
+            { name: "Latvia", inkColor: "#881337" },
+            { name: "Lithuania", inkColor: "#a16207" },
+            { name: "Iceland", inkColor: "#0284c7" },
+            { name: "Malta", inkColor: "#9f1239" },
+            { name: "Cyprus", inkColor: "#c2410c" },
+            { name: "Luxembourg", inkColor: "#38bdf8" },
+            { name: "Ukraine", inkColor: "#ca8a04" },
+            { name: "Serbia", inkColor: "#dc2626" }
+        ];
+
+        // Bottle liquid levels state
+        const countryState = {};
+        europeanCountries.forEach(c => {
+            countryState[c.name] = {
+                fillPercent: 15,
+                inkColor: c.inkColor
+            };
+        });
+
+        let activeIndex = 0;
+        let isZoomedOut = false;
+        let hasDragged = false;
+
+        // Convert hex to RGBA
+        function hexToRgba(hex, alpha) {
+            let c = hex.replace('#', '');
+            if (c.length === 3) c = c.split('').map(x => x + x).join('');
+            const num = parseInt(c, 16);
+            const r = (num >> 16) & 255;
+            const g = (num >> 8) & 255;
+            const b = num & 255;
+            return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+        }
+
+        // Compute dynamic ink dilution -> crystal clear at 100%
+        function calculateLiquidStyle(percent, baseColor) {
+            if (percent >= 100) {
+                return {
+                    height: '100%',
+                    background: 'linear-gradient(180deg, rgba(224, 242, 254, 0.14) 0%, rgba(186, 230, 253, 0.24) 100%)',
+                    borderTop: '1.5px solid rgba(255, 255, 255, 0.85)',
+                    boxShadow: 'inset 0 0 12px rgba(255, 255, 255, 0.35), 0 0 14px rgba(186, 230, 253, 0.25)'
+                };
+            }
+
+            const dilutionFactor = (percent - 15) / 85;
+            const currentAlpha = Math.max(0.95 - (dilutionFactor * 0.82), 0.14);
+            const shadowAlpha = Math.max(0.45 - (dilutionFactor * 0.35), 0.08);
+
+            return {
+                height: `${percent}%`,
+                background: hexToRgba(baseColor, currentAlpha),
+                borderTop: `1.5px solid ${hexToRgba(baseColor, Math.min(currentAlpha + 0.2, 1))}`,
+                boxShadow: `0 0 10px ${hexToRgba(baseColor, shadowAlpha)}`
+            };
+        }
+
+        // Render all bottles into container
+        function renderBottles() {
+            const container = document.getElementById('bottlesContainer');
+            container.innerHTML = '';
+
+            europeanCountries.forEach((country, idx) => {
+                const state = countryState[country.name];
+                const liquidStyle = calculateLiquidStyle(state.fillPercent, country.inkColor);
+                const isFull = state.fillPercent >= 100;
+                const safeId = country.name.replace(/\s+/g, '-');
+
+                const card = document.createElement('div');
+                card.dataset.index = idx;
+                card.className = `bottle-card flex flex-col items-center cursor-pointer select-none ${
+                    idx === activeIndex ? 'focused' : 'dimmed'
+                }`;
+
+                card.onclick = () => {
+                    if (hasDragged) return;
+                    if (!isZoomedOut && idx !== activeIndex) {
+                        scrollToBottle(idx);
+                    } else {
+                        pourWater(country.name, idx);
+                    }
+                };
+
+                card.innerHTML = `
+                    <div class="glass-bottle-container">
+                        <div id="stream-${safeId}" class="pour-stream"></div>
+                        <div class="bottle-cap"></div>
+                        <div class="bottle-neck"></div>
+                        <div class="bottle-body">
+                            <div class="glass-reflection-left"></div>
+                            <div class="glass-reflection-right"></div>
+                            <div id="liquid-${safeId}" class="liquid-fill" style="
+                                height: ${liquidStyle.height};
+                                background: ${liquidStyle.background};
+                                border-top: ${liquidStyle.borderTop};
+                                box-shadow: ${liquidStyle.boxShadow};
+                            "></div>
+                        </div>
+                    </div>
+
+                    <div class="mt-3.5 text-center w-full px-1">
+                        <div class="text-xs sm:text-sm font-semibold text-slate-100 tracking-wide truncate" title="${country.name}">
+                            ${country.name}
+                        </div>
+                        <div id="status-${safeId}" class="mt-1 text-[11px] font-medium ${isFull ? 'text-sky-300' : 'text-slate-400'}">
+                            ${isFull ? 'Clear Water' : `${state.fillPercent}%`}
+                        </div>
+                    </div>
+                `;
+
+                container.appendChild(card);
+            });
+
+            if (!isZoomedOut) {
+                updateCarouselSpotlight();
+            }
+        }
+
+        // Center a specific bottle in the horizontal row
+        function scrollToBottle(index) {
+            const container = document.getElementById('bottlesContainer');
+            const clamped = Math.max(0, Math.min(index, europeanCountries.length - 1));
+            const targetCard = container.children[clamped];
+            if (!targetCard) return;
+
+            activeIndex = clamped;
+            const targetScrollLeft =
+                targetCard.offsetLeft - container.clientWidth / 2 + targetCard.offsetWidth / 2;
+
+            container.scrollTo({
+                left: targetScrollLeft,
+                behavior: 'smooth'
+            });
+            updateCarouselSpotlight();
+        }
+
+        // Highlight only the bottle closest to horizontal center
+        function updateCarouselSpotlight() {
+            if (isZoomedOut) return;
+            const container = document.getElementById('bottlesContainer');
+            const cards = Array.from(container.children);
+            if (!cards.length) return;
+
+            const containerCenter = container.scrollLeft + container.clientWidth / 2;
+            let closestIdx = 0;
+            let minDistance = Infinity;
+
+            cards.forEach((card, idx) => {
+                const cardCenter = card.offsetLeft + card.offsetWidth / 2;
+                const dist = Math.abs(containerCenter - cardCenter);
+                if (dist < minDistance) {
+                    minDistance = dist;
+                    closestIdx = idx;
+                }
+            });
+
+            activeIndex = closestIdx;
+            cards.forEach((card, idx) => {
+                if (idx === activeIndex) {
+                    card.classList.add('focused');
+                    card.classList.remove('dimmed');
+                } else {
+                    card.classList.add('dimmed');
+                    card.classList.remove('focused');
+                }
+            });
+        }
+
+        // Pour water into the selected bottle in-place
+        function pourWater(countryName, idx) {
+            const state = countryState[countryName];
+            if (!state) return;
+
+            if (state.fillPercent < 100) {
+                state.fillPercent = Math.min(state.fillPercent + 25, 100);
+            }
+
+            const safeId = countryName.replace(/\s+/g, '-');
+            const liquidEl = document.getElementById(`liquid-${safeId}`);
+            const streamEl = document.getElementById(`stream-${safeId}`);
+            const statusEl = document.getElementById(`status-${safeId}`);
+
+            if (streamEl) {
+                streamEl.classList.remove('pour-active');
+                void streamEl.offsetWidth;
+                streamEl.classList.add('pour-active');
+            }
+
+            if (liquidEl) {
+                const newStyle = calculateLiquidStyle(state.fillPercent, state.inkColor);
+                liquidEl.style.height = newStyle.height;
+                liquidEl.style.background = newStyle.background;
+                liquidEl.style.borderTop = newStyle.borderTop;
+                liquidEl.style.boxShadow = newStyle.boxShadow;
+            }
+
+            if (statusEl) {
+                const isFull = state.fillPercent >= 100;
+                statusEl.textContent = isFull ? 'Clear Water' : `${state.fillPercent}%`;
+                statusEl.className = `mt-1 text-[11px] font-medium ${isFull ? 'text-sky-300' : 'text-slate-400'}`;
+            }
+
+            // Show subtle confirmation pill
+            const banner = document.getElementById('confirmationBanner');
+            const textEl = document.getElementById('confirmationText');
+            textEl.textContent = `${countryName} - ${state.fillPercent >= 100 ? 'It looks clean now. But has anything really changed?' : `Diluted to ${state.fillPercent}%`}`;
+            banner.classList.remove('hidden');
+        }
+
+        // Toggle between Horizontal Carousel and Original Multi-Row Grid
+        function toggleZoomLayout() {
+            isZoomedOut = !isZoomedOut;
+            const container = document.getElementById('bottlesContainer');
+            const zoomLabel = document.getElementById('zoomToggleLabel');
+            const zoomOutIcon = document.getElementById('zoomOutIcon');
+            const zoomInIcon = document.getElementById('zoomInIcon');
+
+            if (isZoomedOut) {
+                container.classList.remove('carousel-track');
+                container.classList.add('grid-track');
+                zoomLabel.textContent = 'Carousel View';
+                zoomOutIcon.classList.add('hidden');
+                zoomInIcon.classList.remove('hidden');
+            } else {
+                container.classList.remove('grid-track');
+                container.classList.add('carousel-track');
+                zoomLabel.textContent = 'Zoom Out';
+                zoomInIcon.classList.add('hidden');
+                zoomOutIcon.classList.remove('hidden');
+
+                requestAnimationFrame(() => {
+                    scrollToBottle(activeIndex);
+                });
+            }
+        }
+
+        // Reset all bottles back to initial 15% concentrated ink
+        function resetAllBottles() {
+            europeanCountries.forEach(c => {
+                countryState[c.name].fillPercent = 15;
+            });
+            document.getElementById('confirmationBanner').classList.add('hidden');
+            renderBottles();
+            if (!isZoomedOut) {
+                requestAnimationFrame(() => scrollToBottle(activeIndex));
+            }
+        }
+
+        // Opening Splash Screen Transition
+        function enterMainExperience() {
+            const opening = document.getElementById('openingScreen');
+            const mainApp = document.getElementById('mainApp');
+            opening.classList.add('fade-out');
+            mainApp.classList.add('visible');
+
+            requestAnimationFrame(() => {
+                scrollToBottle(activeIndex);
+            });
+        }
+
+        // Initialize listeners
+        window.addEventListener('DOMContentLoaded', () => {
+            renderBottles();
+
+            const opening = document.getElementById('openingScreen');
+            opening.addEventListener('click', enterMainExperience);
+            opening.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    enterMainExperience();
+                }
+            });
+
+            const container = document.getElementById('bottlesContainer');
+            container.addEventListener('scroll', () => {
+                if (!isZoomedOut) {
+                    window.requestAnimationFrame(updateCarouselSpotlight);
+                }
+            }, { passive: true });
+
+            // Smooth Mouse Click-and-Drag Horizontal Scrolling with Drag-vs-Click Detection
+            let isPointerDown = false;
+            let startX = 0;
+            let startScrollLeft = 0;
+
+            container.addEventListener('mousedown', (e) => {
+                if (isZoomedOut) return;
+                isPointerDown = true;
+                hasDragged = false;
+                startX = e.pageX - container.offsetLeft;
+                startScrollLeft = container.scrollLeft;
+                container.style.scrollBehavior = 'auto';
+                container.style.scrollSnapType = 'none';
+            });
+
+            window.addEventListener('mousemove', (e) => {
+                if (!isPointerDown || isZoomedOut) return;
+                const x = e.pageX - container.offsetLeft;
+                const walk = x - startX;
+                if (Math.abs(walk) > 6) {
+                    hasDragged = true;
+                }
+                if (hasDragged) {
+                    e.preventDefault();
+                    container.scrollLeft = startScrollLeft - walk * 1.25;
+                }
+            });
+
+            window.addEventListener('mouseup', () => {
+                if (!isPointerDown) return;
+                isPointerDown = false;
+                container.style.scrollBehavior = 'smooth';
+                container.style.scrollSnapType = 'x mandatory';
+                if (hasDragged && !isZoomedOut) {
+                    scrollToBottle(activeIndex);
+                }
+                setTimeout(() => {
+                    hasDragged = false;
+                }, 40);
+            });
+
+            document.getElementById('zoomToggleBtn').addEventListener('click', toggleZoomLayout);
+            document.getElementById('resetAllBtn').addEventListener('click', resetAllBottles);
+
+            window.addEventListener('resize', () => {
+                if (!isZoomedOut) {
+                    scrollToBottle(activeIndex);
+                }
+            });
+        });
+    </script>
+</body>
+</html>
